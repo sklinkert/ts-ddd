@@ -13,7 +13,7 @@ export class ProductOrmEntity {
   name!: string;
 
   @Property({ type: 'bigint' })
-  priceCents!: string | number;
+  priceCents!: string | number | bigint;
 
   @Property({ type: 'timestamptz' })
   createdAt!: Date;

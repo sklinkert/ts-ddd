@@ -18,6 +18,7 @@ module.exports = {
         '^@shared/(.*)$': '<rootDir>/src/shared/$1',
         '^@modules/(.*)$': '<rootDir>/src/modules/$1',
       },
+      setupFiles: ['<rootDir>/test/setup/reflect-metadata.ts'],
     },
     {
       ...base,
@@ -30,6 +31,7 @@ module.exports = {
         '^@shared/(.*)$': '<rootDir>/src/shared/$1',
         '^@modules/(.*)$': '<rootDir>/src/modules/$1',
       },
+      setupFiles: ['<rootDir>/test/setup/reflect-metadata.ts'],
     },
   ],
 };

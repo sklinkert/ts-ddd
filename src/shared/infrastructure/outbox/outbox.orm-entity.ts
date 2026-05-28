@@ -24,6 +24,9 @@ export class OutboxOrmEntity {
   @Property({ type: 'timestamptz', nullable: true })
   publishedAt: Date | null = null;
 
+  @Property({ type: 'timestamptz', nullable: true })
+  claimedAt: Date | null = null;
+
   @Property({ type: 'integer', default: 0 })
   attempts = 0;
 }

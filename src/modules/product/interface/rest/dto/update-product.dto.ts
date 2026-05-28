@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -10,5 +10,6 @@ export class UpdateProductDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(Number.MAX_SAFE_INTEGER)
   priceCents?: number;
 }

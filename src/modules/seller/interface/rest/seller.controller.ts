@@ -14,6 +14,7 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateSellerDto } from './dto/create-seller.dto';
 import { RenameSellerDto } from './dto/rename-seller.dto';
 import { SellerResponse, toSellerResponse } from './dto/seller.response';
+import { ListPaginationDto } from '../../../../shared/interface/dto/list-pagination.dto';
 import { CreateSellerCommand } from '../../application/commands/create-seller.command';
 import { RenameSellerCommand } from '../../application/commands/rename-seller.command';
 import { GetSellerQuery } from '../../application/queries/get-seller.query';
@@ -45,12 +46,9 @@ export class SellerController {
   }
 
   @Get()
-  async list(
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-  ): Promise<SellerResponse[]> {
+  async list(@Query() query: ListPaginationDto): Promise<SellerResponse[]> {
     const sellers = await this.queryBus.execute<ListSellersQuery, Seller[]>(
-      new ListSellersQuery(limit ? Number(limit) : undefined, offset ? Number(offset) : undefined),
+      new ListSellersQuery(query.limit, query.offset),
     );
     return sellers.map(toSellerResponse);
   }

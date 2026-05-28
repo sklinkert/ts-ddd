@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { createTestApp, TestAppContext } from './setup/test-app';
+import { IdempotencyService } from '../../src/shared/infrastructure/idempotency/idempotency.service';
 
 describe('Idempotency (integration)', () => {
   let ctx: TestAppContext;
@@ -26,7 +27,7 @@ describe('Idempotency (integration)', () => {
       .send(body)
       .expect(201);
 
-    // Wait for the async record() write in res.on('finish') to land
+    // completeClaim is fire-and-forget from res.on('finish'); give it a moment to land.
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     const second = await request(ctx.app.getHttpServer())
@@ -52,11 +53,12 @@ describe('Idempotency (integration)', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    await request(ctx.app.getHttpServer())
+    const res = await request(ctx.app.getHttpServer())
       .post('/api/v1/sellers')
       .set('Idempotency-Key', KEY)
       .send({ name: 'Different', email: 'acme@example.com' })
       .expect(409);
+    expect(res.body.code).toBe('idempotency_conflict');
   });
 
   it('does not intercept requests without an Idempotency-Key', async () => {
@@ -69,5 +71,71 @@ describe('Idempotency (integration)', () => {
       .send({ name: 'A', email: 'a@b.co' })
       .expect(201);
     expect(a.body.id).not.toBe(b.body.id);
+  });
+
+  it('returns 409 in_flight when a concurrent request races on the same key', async () => {
+    // Simulate the in-flight state directly via the service rather than racing
+    // two HTTP requests (which would be flaky). A real second request after
+    // a winning claim but before the response lands sees this state.
+    const idempotency = ctx.app.get(IdempotencyService);
+    const body = { name: 'Acme', email: 'a@b.co' };
+    const hash = idempotency.hashRequest(body);
+
+    const winner = await idempotency.claim(KEY, 'POST', '/api/v1/sellers', hash);
+    expect(winner.kind).toBe('claimed');
+
+    const loser = await idempotency.claim(KEY, 'POST', '/api/v1/sellers', hash);
+    expect(loser.kind).toBe('in_flight');
+
+    const res = await request(ctx.app.getHttpServer())
+      .post('/api/v1/sellers')
+      .set('Idempotency-Key', KEY)
+      .send(body)
+      .expect(409);
+    expect(res.body.code).toBe('idempotency_in_flight');
+    expect(res.headers['retry-after']).toBeDefined();
+  });
+
+  it('hashes request bodies canonically (key order does not matter)', async () => {
+    const body1 = { name: 'Acme', email: 'a@b.co' };
+    const body2 = { email: 'a@b.co', name: 'Acme' };
+
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/sellers')
+      .set('Idempotency-Key', KEY)
+      .send(body1)
+      .expect(201);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const replay = await request(ctx.app.getHttpServer())
+      .post('/api/v1/sellers')
+      .set('Idempotency-Key', KEY)
+      .send(body2)
+      .expect(201);
+
+    const rows = await ctx.orm.em
+      .getConnection()
+      .execute<{ count: string }[]>('SELECT count(*)::text AS count FROM sellers');
+    expect(rows[0].count).toBe('1');
+    expect(replay.body.id).toBeDefined();
+  });
+
+  it('cleanupOlderThan deletes completed records past the retention window', async () => {
+    const idempotency = ctx.app.get(IdempotencyService);
+    const body = { name: 'A', email: 'a@b.co' };
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/sellers')
+      .set('Idempotency-Key', KEY)
+      .send(body)
+      .expect(201);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Backdate the record so cleanup deletes it.
+    await ctx.orm.em
+      .getConnection()
+      .execute("UPDATE idempotency_records SET created_at = now() - interval '2 days'");
+
+    const deleted = await idempotency.cleanupOlderThan(24 * 60 * 60 * 1000);
+    expect(deleted).toBeGreaterThanOrEqual(1);
   });
 });

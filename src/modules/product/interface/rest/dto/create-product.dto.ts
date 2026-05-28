@@ -1,4 +1,4 @@
-import { IsInt, IsString, IsUUID, MaxLength, Min, MinLength } from 'class-validator';
+import { IsInt, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateProductDto {
   @IsUUID()
@@ -11,5 +11,6 @@ export class CreateProductDto {
 
   @IsInt()
   @Min(1)
+  @Max(Number.MAX_SAFE_INTEGER)
   priceCents!: number;
 }

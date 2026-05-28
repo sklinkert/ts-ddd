@@ -83,11 +83,11 @@ export class Seller extends AggregateRoot {
   }
 
   private validate(): void {
-    const name = this._name?.trim() ?? '';
-    if (name.length === 0) {
+    const trimmed = this._name?.trim() ?? '';
+    if (trimmed.length === 0) {
       throw new InvariantViolation('Seller name must not be empty');
     }
-    if (this._name.length > NAME_MAX_LENGTH) {
+    if (trimmed.length > NAME_MAX_LENGTH) {
       throw new InvariantViolation(`Seller name must be at most ${NAME_MAX_LENGTH} characters`);
     }
     if (!EMAIL_REGEX.test(this._email)) {

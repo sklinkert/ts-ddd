@@ -120,15 +120,17 @@ export class Product extends AggregateRoot {
   }
 
   private validate(): void {
-    const name = this._name?.trim() ?? '';
-    if (name.length === 0) {
+    const trimmed = this._name?.trim() ?? '';
+    if (trimmed.length === 0) {
       throw new InvariantViolation('Product name must not be empty');
     }
-    if (this._name.length > NAME_MAX_LENGTH) {
+    if (trimmed.length > NAME_MAX_LENGTH) {
       throw new InvariantViolation(`Product name must be at most ${NAME_MAX_LENGTH} characters`);
     }
-    if (!Number.isInteger(this._priceCents)) {
-      throw new InvariantViolation('Product priceCents must be an integer');
+    if (!Number.isSafeInteger(this._priceCents)) {
+      throw new InvariantViolation(
+        'Product priceCents must be a safe integer (<= Number.MAX_SAFE_INTEGER)',
+      );
     }
     if (this._priceCents <= 0) {
       throw new InvariantViolation('Product priceCents must be greater than 0');

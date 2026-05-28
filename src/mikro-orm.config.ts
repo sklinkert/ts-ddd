@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { defineConfig } from '@mikro-orm/postgresql';
 import { Migrator } from '@mikro-orm/migrations';
 import { SellerOrmEntity } from './modules/seller/infrastructure/persistence/seller.orm-entity';

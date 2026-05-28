@@ -1,40 +1,64 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { IdempotencyOrmEntity } from './idempotency.orm-entity';
+
+const PENDING_STATUS = 0;
 
 export interface CachedResponse {
   status: number;
   body: unknown;
 }
 
+export type ClaimResult =
+  | { kind: 'claimed' }
+  | { kind: 'replay'; response: CachedResponse }
+  | { kind: 'in_flight' }
+  | { kind: 'conflict' };
+
+/**
+ * Stripe-style idempotency.
+ *
+ * `claim()` is called BEFORE the handler runs. It atomically inserts a
+ * pending row keyed by (key, method, path). The winning request gets
+ * `kind: 'claimed'` and proceeds; concurrent requests with the same key
+ * either replay a finished response, see an in-flight response (and
+ * receive 409 + Retry-After), or hit a hash conflict.
+ */
 @Injectable()
 export class IdempotencyService {
   constructor(private readonly em: EntityManager) {}
 
   hashRequest(body: unknown): string {
-    const json = body === undefined || body === null ? '' : JSON.stringify(body);
-    return createHash('sha256').update(json).digest('hex');
+    return createHash('sha256').update(canonicalJson(body)).digest('hex');
   }
 
-  async lookup(
+  async claim(
     key: string,
     method: string,
     path: string,
     requestHash: string,
-  ): Promise<{ kind: 'miss' } | { kind: 'hit'; response: CachedResponse } | { kind: 'conflict' }> {
+  ): Promise<ClaimResult> {
     const em = this.em.fork();
-    const row = await em.findOne(IdempotencyOrmEntity, { key, method, path });
-    if (!row) return { kind: 'miss' };
-    if (row.requestHash !== requestHash) return { kind: 'conflict' };
-    return { kind: 'hit', response: { status: row.responseStatus, body: row.responseBody } };
+
+    const inserted = await em.getConnection().execute<{ key: string }[]>(
+      `INSERT INTO idempotency_records (key, method, path, request_hash, response_status, response_body, created_at)
+         VALUES (?, ?, ?, ?, ?, '{}'::jsonb, now())
+         ON CONFLICT (key, method, path) DO NOTHING
+         RETURNING key`,
+      [key, method, path, requestHash, PENDING_STATUS],
+    );
+
+    if (inserted.length === 1) {
+      return { kind: 'claimed' };
+    }
+
+    return this.inspectExisting(key, method, path, requestHash);
   }
 
-  async record(
+  async completeClaim(
     key: string,
     method: string,
     path: string,
-    requestHash: string,
     status: number,
     body: unknown,
   ): Promise<void> {
@@ -42,10 +66,82 @@ export class IdempotencyService {
     await em
       .getConnection()
       .execute(
-        `INSERT INTO idempotency_records (key, method, path, request_hash, response_status, response_body, created_at)
-         VALUES (?, ?, ?, ?, ?, ?::jsonb, now())
-         ON CONFLICT (key, method, path) DO NOTHING`,
-        [key, method, path, requestHash, status, JSON.stringify(body ?? null)],
+        `UPDATE idempotency_records
+            SET response_status = ?, response_body = ?::jsonb
+          WHERE key = ? AND method = ? AND path = ?
+            AND response_status = ?`,
+        [status, JSON.stringify(body ?? null), key, method, path, PENDING_STATUS],
       );
   }
+
+  async releaseClaim(key: string, method: string, path: string): Promise<void> {
+    const em = this.em.fork();
+    await em
+      .getConnection()
+      .execute(
+        `DELETE FROM idempotency_records
+          WHERE key = ? AND method = ? AND path = ? AND response_status = ?`,
+        [key, method, path, PENDING_STATUS],
+      );
+  }
+
+  async cleanupOlderThan(ms: number): Promise<number> {
+    const em = this.em.fork();
+    const rows = await em
+      .getConnection()
+      .execute<{ deleted: string }[]>(
+        `WITH deleted AS (
+           DELETE FROM idempotency_records
+            WHERE created_at < now() - (? || ' milliseconds')::interval
+              AND response_status <> ?
+            RETURNING 1
+         )
+         SELECT count(*)::text AS deleted FROM deleted`,
+        [ms, PENDING_STATUS],
+      );
+    return Number(rows[0]?.deleted ?? 0);
+  }
+
+  private async inspectExisting(
+    key: string,
+    method: string,
+    path: string,
+    requestHash: string,
+  ): Promise<ClaimResult> {
+    const em = this.em.fork();
+    const rows = await em.getConnection().execute<
+      { request_hash: string; response_status: number; response_body: unknown }[]
+    >(
+      `SELECT request_hash, response_status, response_body
+         FROM idempotency_records
+        WHERE key = ? AND method = ? AND path = ?`,
+      [key, method, path],
+    );
+    const row = rows[0];
+    if (!row) return { kind: 'in_flight' };
+    if (row.request_hash !== requestHash) return { kind: 'conflict' };
+    if (row.response_status === PENDING_STATUS) return { kind: 'in_flight' };
+    return { kind: 'replay', response: { status: row.response_status, body: row.response_body } };
+  }
+}
+
+/**
+ * Canonical JSON: sort object keys recursively before serialization so
+ * that semantically identical bodies hash to the same digest regardless
+ * of property order chosen by the client.
+ */
+function canonicalJson(value: unknown): string {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return '[' + value.map(canonicalJson).join(',') + ']';
+  }
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  return (
+    '{' +
+    keys
+      .map((k) => JSON.stringify(k) + ':' + canonicalJson((value as Record<string, unknown>)[k]))
+      .join(',') +
+    '}'
+  );
 }

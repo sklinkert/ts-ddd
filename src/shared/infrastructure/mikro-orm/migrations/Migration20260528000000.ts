@@ -33,6 +33,7 @@ export class Migration20260528000000 extends Migration {
         payload jsonb NOT NULL,
         occurred_at timestamptz NOT NULL,
         published_at timestamptz NULL,
+        claimed_at timestamptz NULL,
         attempts integer NOT NULL DEFAULT 0
       );
     `);
@@ -52,6 +53,9 @@ export class Migration20260528000000 extends Migration {
         PRIMARY KEY (key, method, path)
       );
     `);
+    this.addSql(
+      `CREATE INDEX IF NOT EXISTS idempotency_created_at_idx ON idempotency_records (created_at);`,
+    );
   }
 
   async down(): Promise<void> {

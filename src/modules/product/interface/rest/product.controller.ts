@@ -13,6 +13,7 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ListProductsDto } from './dto/list-products.dto';
 import { ProductResponse, toProductResponse } from './dto/product.response';
 import { CreateProductCommand } from '../../application/commands/create-product.command';
 import { UpdateProductCommand } from '../../application/commands/update-product.command';
@@ -45,17 +46,9 @@ export class ProductController {
   }
 
   @Get()
-  async list(
-    @Query('sellerId') sellerId?: string,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-  ): Promise<ProductResponse[]> {
+  async list(@Query() query: ListProductsDto): Promise<ProductResponse[]> {
     const products = await this.queryBus.execute<ListProductsQuery, Product[]>(
-      new ListProductsQuery(
-        sellerId,
-        limit ? Number(limit) : undefined,
-        offset ? Number(offset) : undefined,
-      ),
+      new ListProductsQuery(query.sellerId, query.limit, query.offset),
     );
     return products.map(toProductResponse);
   }
