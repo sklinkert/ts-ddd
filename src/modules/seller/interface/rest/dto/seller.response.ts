@@ -1,11 +1,21 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Seller } from '../../../domain/seller';
 
-export interface SellerResponse {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-  updatedAt: string;
+export class SellerResponse {
+  @ApiProperty({ format: 'uuid', type: String })
+  id!: string;
+
+  @ApiProperty({ example: 'Acme Inc.', type: String })
+  name!: string;
+
+  @ApiProperty({ format: 'email', type: String })
+  email!: string;
+
+  @ApiProperty({ format: 'date-time', type: String })
+  createdAt!: string;
+
+  @ApiProperty({ format: 'date-time', type: String })
+  updatedAt!: string;
 }
 
 export function toSellerResponse(seller: Seller): SellerResponse {

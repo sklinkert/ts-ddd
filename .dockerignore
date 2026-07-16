@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.git
+.github
+.context
+.env
+.env.*
+*.md
+test
+api
+Makefile
+docker-compose.yml
+Dockerfile
+.dockerignore

@@ -29,11 +29,12 @@ describe('Product API (integration)', () => {
 
     const created = await request(ctx.app.getHttpServer())
       .post('/api/v1/products')
-      .send({ sellerId, name: 'Widget', priceCents: 1299 })
+      .send({ sellerId, name: 'Widget', priceCents: 1299, currency: 'USD' })
       .expect(201);
 
     expect(created.body.sellerId).toBe(sellerId);
     expect(created.body.priceCents).toBe(1299);
+    expect(created.body.currency).toBe('USD');
   });
 
   it('rejects creation when seller does not exist', async () => {
@@ -43,6 +44,7 @@ describe('Product API (integration)', () => {
         sellerId: '00000000-0000-7000-8000-000000000000',
         name: 'Widget',
         priceCents: 100,
+        currency: 'USD',
       })
       .expect(404);
   });
@@ -51,7 +53,23 @@ describe('Product API (integration)', () => {
     const sellerId = await createSeller(ctx);
     await request(ctx.app.getHttpServer())
       .post('/api/v1/products')
-      .send({ sellerId, name: 'Widget', priceCents: 0 })
+      .send({ sellerId, name: 'Widget', priceCents: 0, currency: 'USD' })
+      .expect(400);
+  });
+
+  it('rejects a missing currency', async () => {
+    const sellerId = await createSeller(ctx);
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/products')
+      .send({ sellerId, name: 'Widget', priceCents: 100 })
+      .expect(400);
+  });
+
+  it('rejects a malformed currency', async () => {
+    const sellerId = await createSeller(ctx);
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/products')
+      .send({ sellerId, name: 'Widget', priceCents: 100, currency: 'usd' })
       .expect(400);
   });
 
@@ -59,7 +77,7 @@ describe('Product API (integration)', () => {
     const sellerId = await createSeller(ctx);
     const created = await request(ctx.app.getHttpServer())
       .post('/api/v1/products')
-      .send({ sellerId, name: 'Widget', priceCents: 100 })
+      .send({ sellerId, name: 'Widget', priceCents: 100, currency: 'USD' })
       .expect(201);
 
     const updated = await request(ctx.app.getHttpServer())
@@ -69,6 +87,36 @@ describe('Product API (integration)', () => {
 
     expect(updated.body.name).toBe('New Widget');
     expect(updated.body.priceCents).toBe(250);
+    expect(updated.body.currency).toBe('USD');
+  });
+
+  it('changes price and currency together', async () => {
+    const sellerId = await createSeller(ctx);
+    const created = await request(ctx.app.getHttpServer())
+      .post('/api/v1/products')
+      .send({ sellerId, name: 'Widget', priceCents: 100, currency: 'USD' })
+      .expect(201);
+
+    const updated = await request(ctx.app.getHttpServer())
+      .patch(`/api/v1/products/${created.body.id}`)
+      .send({ priceCents: 250, currency: 'EUR' })
+      .expect(200);
+
+    expect(updated.body.priceCents).toBe(250);
+    expect(updated.body.currency).toBe('EUR');
+  });
+
+  it('rejects currency without priceCents', async () => {
+    const sellerId = await createSeller(ctx);
+    const created = await request(ctx.app.getHttpServer())
+      .post('/api/v1/products')
+      .send({ sellerId, name: 'Widget', priceCents: 100, currency: 'USD' })
+      .expect(201);
+
+    await request(ctx.app.getHttpServer())
+      .patch(`/api/v1/products/${created.body.id}`)
+      .send({ currency: 'EUR' })
+      .expect(400);
   });
 
   it('lists products filtered by sellerId', async () => {
@@ -81,11 +129,11 @@ describe('Product API (integration)', () => {
 
     await request(ctx.app.getHttpServer())
       .post('/api/v1/products')
-      .send({ sellerId: seller1, name: 'A', priceCents: 100 })
+      .send({ sellerId: seller1, name: 'A', priceCents: 100, currency: 'USD' })
       .expect(201);
     await request(ctx.app.getHttpServer())
       .post('/api/v1/products')
-      .send({ sellerId: seller2, name: 'B', priceCents: 200 })
+      .send({ sellerId: seller2, name: 'B', priceCents: 200, currency: 'USD' })
       .expect(201);
 
     const list = await request(ctx.app.getHttpServer())

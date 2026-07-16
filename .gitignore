@@ -25,3 +25,6 @@ lerna-debug.log*
 
 # MikroORM generated snapshots
 **/.snapshot-*.json
+
+# TypeScript incremental build info
+*.tsbuildinfo

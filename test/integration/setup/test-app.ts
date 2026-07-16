@@ -1,8 +1,8 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModuleBuilder } from '@nestjs/testing';
 import { MikroORM } from '@mikro-orm/core';
 import { AppModule } from '../../../src/app.module';
-import { DomainExceptionFilter } from '../../../src/shared/interface/filters/domain-exception.filter';
+import { configureApp } from '../../../src/app.setup';
 
 export interface TestAppContext {
   app: INestApplication;
@@ -18,23 +18,15 @@ export async function createTestApp(
   if (customize) builder = customize(builder);
   const moduleRef = await builder.compile();
 
-  const app = moduleRef.createNestApplication();
-  app.setGlobalPrefix('api/v1');
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-  app.useGlobalFilters(new DomainExceptionFilter());
+  const app = moduleRef.createNestApplication({ logger: false });
+  configureApp(app);
   await app.init();
 
   const orm = app.get(MikroORM);
 
   const truncate = async () => {
-    await orm
-      .em.getConnection()
+    await orm.em
+      .getConnection()
       .execute(
         'TRUNCATE TABLE products, sellers, outbox, idempotency_records RESTART IDENTITY CASCADE',
       );

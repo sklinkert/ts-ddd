@@ -34,13 +34,10 @@ export class IdempotencyMiddleware implements NestMiddleware {
     }
 
     if (result.kind === 'in_flight') {
-      res
-        .status(HttpStatus.CONFLICT)
-        .set('Retry-After', String(RETRY_AFTER_SECONDS))
-        .json({
-          code: 'idempotency_in_flight',
-          message: 'A request with this Idempotency-Key is still being processed',
-        });
+      res.status(HttpStatus.CONFLICT).set('Retry-After', String(RETRY_AFTER_SECONDS)).json({
+        code: 'idempotency_in_flight',
+        message: 'A request with this Idempotency-Key is still being processed',
+      });
       return;
     }
 

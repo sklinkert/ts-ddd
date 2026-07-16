@@ -38,7 +38,12 @@ export class Seller extends AggregateRoot {
     const seller = new Seller(id, props.name, props.email, now, now);
     seller.validate();
     seller.recordEvent(
-      new SellerCreatedEvent({ sellerId: id, name: seller._name, email: seller._email, occurredAt: now }),
+      new SellerCreatedEvent({
+        sellerId: id,
+        name: seller._name,
+        email: seller._email,
+        occurredAt: now,
+      }),
     );
     return seller;
   }
@@ -74,7 +79,9 @@ export class Seller extends AggregateRoot {
     this._name = name;
     this._updatedAt = new Date();
     this.validate();
-    this.recordEvent(new SellerRenamedEvent({ sellerId: this._id, name, occurredAt: this._updatedAt }));
+    this.recordEvent(
+      new SellerRenamedEvent({ sellerId: this._id, name, occurredAt: this._updatedAt }),
+    );
   }
 
   toValidated(): ValidatedSeller {

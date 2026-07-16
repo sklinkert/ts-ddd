@@ -1,0 +1,4 @@
+# Generated — formatting is owned by scripts/generate-openapi.ts (CI drift check)
+api/openapi.yaml
+dist
+coverage

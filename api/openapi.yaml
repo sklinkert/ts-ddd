@@ -1,0 +1,382 @@
+openapi: 3.0.0
+paths:
+  /api/v1/sellers:
+    post:
+      operationId: SellerController_create
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: Replays the cached response when the same key + body is retried
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSellerDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerResponse"
+        "400":
+          description: Validation or invariant violation
+        "409":
+          description: Idempotency-Key reused with a different body
+      summary: Create a seller
+      tags:
+        - sellers
+    get:
+      operationId: SellerController_list
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 200
+            default: 50
+            type: number
+        - name: offset
+          required: false
+          in: query
+          schema:
+            minimum: 0
+            default: 0
+            type: number
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SellerResponse"
+      summary: List sellers
+      tags:
+        - sellers
+  /api/v1/sellers/{id}:
+    get:
+      operationId: SellerController_get
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerResponse"
+        "404":
+          description: Seller not found
+      summary: Get a seller by id
+      tags:
+        - sellers
+  /api/v1/sellers/{id}/name:
+    patch:
+      operationId: SellerController_rename
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          description: Replays the cached response when the same key + body is retried
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenameSellerDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerResponse"
+        "400":
+          description: Validation or invariant violation
+        "404":
+          description: Seller not found
+        "409":
+          description: Idempotency-Key reused with a different body
+      summary: Rename a seller
+      tags:
+        - sellers
+  /api/v1/products:
+    post:
+      operationId: ProductController_create
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: Replays the cached response when the same key + body is retried
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductDto"
+      responses:
+        "201":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          description: Validation or invariant violation
+        "404":
+          description: Seller not found
+        "409":
+          description: Idempotency-Key reused with a different body
+      summary: Create a product
+      tags:
+        - products
+    get:
+      operationId: ProductController_list
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 200
+            default: 50
+            type: number
+        - name: offset
+          required: false
+          in: query
+          schema:
+            minimum: 0
+            default: 0
+            type: number
+        - name: sellerId
+          required: false
+          in: query
+          description: Filter by owning seller
+          schema:
+            format: uuid
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductResponse"
+      summary: List products
+      tags:
+        - products
+  /api/v1/products/{id}:
+    get:
+      operationId: ProductController_get
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          description: Product not found
+      summary: Get a product by id
+      tags:
+        - products
+    patch:
+      operationId: ProductController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          description: Replays the cached response when the same key + body is retried
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductDto"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          description: Validation or invariant violation
+        "404":
+          description: Product not found
+        "409":
+          description: Idempotency-Key reused with a different body
+      summary: Update a product (rename and/or change price)
+      tags:
+        - products
+info:
+  title: ts-ddd
+  description: Opinionated Nest.js / TypeScript DDD template — Seller and Product
+    aggregates with CQRS, transactional outbox, and idempotent writes.
+  version: 0.1.0
+  contact: {}
+tags:
+  - name: sellers
+    description: ""
+  - name: products
+    description: ""
+servers: []
+components:
+  schemas:
+    CreateSellerDto:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          example: Acme Inc.
+        email:
+          type: string
+          format: email
+          example: acme@example.com
+      required:
+        - name
+        - email
+    SellerResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Acme Inc.
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - createdAt
+        - updatedAt
+    RenameSellerDto:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          example: Acme Corp.
+      required:
+        - name
+    CreateProductDto:
+      type: object
+      properties:
+        sellerId:
+          type: string
+          format: uuid
+          description: Id of the owning seller
+        name:
+          type: string
+          maxLength: 120
+          example: Widget
+        priceCents:
+          type: number
+          minimum: 1
+          example: 1299
+          description: Price in minor units (cents)
+        currency:
+          type: string
+          example: USD
+          description: ISO 4217 currency code
+      required:
+        - sellerId
+        - name
+        - priceCents
+        - currency
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sellerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Widget
+        priceCents:
+          type: number
+          example: 1299
+          description: Price in minor units (cents)
+        currency:
+          type: string
+          example: USD
+          description: ISO 4217 currency code
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sellerId
+        - name
+        - priceCents
+        - currency
+        - createdAt
+        - updatedAt
+    UpdateProductDto:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          example: Widget Pro
+        priceCents:
+          type: number
+          minimum: 1
+          example: 1499
+          description: Price in minor units (cents)
+        currency:
+          type: string
+          example: EUR
+          description: ISO 4217 currency code; only allowed together with priceCents

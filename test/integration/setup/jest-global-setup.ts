@@ -20,6 +20,7 @@ const SCHEMA_SQL = `
     seller_id uuid NOT NULL,
     name text NOT NULL,
     price_cents bigint NOT NULL,
+    currency text NOT NULL DEFAULT 'USD',
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL
   );

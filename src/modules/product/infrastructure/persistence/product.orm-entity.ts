@@ -15,6 +15,9 @@ export class ProductOrmEntity {
   @Property({ type: 'bigint' })
   priceCents!: string | number | bigint;
 
+  @Property({ type: 'text' })
+  currency!: string;
+
   @Property({ type: 'timestamptz' })
   createdAt!: Date;
 

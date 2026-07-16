@@ -11,10 +11,13 @@ const databaseUrl =
 
 export default defineConfig({
   clientUrl: databaseUrl,
+  // Set MIKRO_ORM_CONNECT=false to boot the app without a database
+  // (used by scripts/generate-openapi.ts).
+  connect: process.env.MIKRO_ORM_CONNECT !== 'false',
   entities: [SellerOrmEntity, ProductOrmEntity, OutboxOrmEntity, IdempotencyOrmEntity],
   extensions: [Migrator],
   migrations: {
-    path: './src/shared/infrastructure/mikro-orm/migrations',
+    path: './dist/shared/infrastructure/mikro-orm/migrations',
     pathTs: './src/shared/infrastructure/mikro-orm/migrations',
     glob: '!(*.d).{js,ts}',
     transactional: true,
