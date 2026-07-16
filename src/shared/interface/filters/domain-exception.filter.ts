@@ -7,12 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import {
-  ConflictError,
-  DomainError,
-  InvariantViolation,
-  NotFoundError,
-} from '../../domain/errors';
+import { ConflictError, DomainError, InvariantViolation, NotFoundError } from '../../domain/errors';
 
 interface ErrorBody {
   code: string;

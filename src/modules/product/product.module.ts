@@ -11,7 +11,12 @@ import { GetProductHandler } from './application/queries/get-product.handler';
 import { ListProductsHandler } from './application/queries/list-products.handler';
 import { SellerModule } from '../seller/seller.module';
 
-const handlers = [CreateProductHandler, UpdateProductHandler, GetProductHandler, ListProductsHandler];
+const handlers = [
+  CreateProductHandler,
+  UpdateProductHandler,
+  GetProductHandler,
+  ListProductsHandler,
+];
 
 @Module({
   imports: [CqrsModule, MikroOrmModule.forFeature([ProductOrmEntity]), SellerModule],

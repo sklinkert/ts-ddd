@@ -1,5 +1,6 @@
 import { AggregateRoot } from '../../../shared/domain/aggregate-root';
 import { InvariantViolation } from '../../../shared/domain/errors';
+import { Money } from '../../../shared/domain/money';
 import { SellerId } from '../../seller/domain/seller-id';
 import { ProductCreatedEvent } from './events/product-created.event';
 import { ProductPriceChangedEvent } from './events/product-price-changed.event';
@@ -12,14 +13,14 @@ const NAME_MAX_LENGTH = 120;
 export interface ProductCreateProps {
   sellerId: SellerId;
   name: string;
-  priceCents: number;
+  price: Money;
 }
 
 export interface ProductRehydrateProps {
   id: ProductId;
   sellerId: SellerId;
   name: string;
-  priceCents: number;
+  price: Money;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,7 +30,7 @@ export class Product extends AggregateRoot {
     private readonly _id: ProductId,
     private readonly _sellerId: SellerId,
     private _name: string,
-    private _priceCents: number,
+    private _price: Money,
     private readonly _createdAt: Date,
     private _updatedAt: Date,
   ) {
@@ -39,14 +40,14 @@ export class Product extends AggregateRoot {
   static create(props: ProductCreateProps): Product {
     const now = new Date();
     const id = newProductId();
-    const product = new Product(id, props.sellerId, props.name, props.priceCents, now, now);
+    const product = new Product(id, props.sellerId, props.name, props.price, now, now);
     product.validate();
     product.recordEvent(
       new ProductCreatedEvent({
         productId: id,
         sellerId: props.sellerId,
         name: product._name,
-        priceCents: product._priceCents,
+        price: product._price,
         occurredAt: now,
       }),
     );
@@ -58,7 +59,7 @@ export class Product extends AggregateRoot {
       props.id,
       props.sellerId,
       props.name,
-      props.priceCents,
+      props.price,
       props.createdAt,
       props.updatedAt,
     );
@@ -78,8 +79,16 @@ export class Product extends AggregateRoot {
     return this._name;
   }
 
+  get price(): Money {
+    return this._price;
+  }
+
   get priceCents(): number {
-    return this._priceCents;
+    return this._price.amountCents;
+  }
+
+  get currency(): string {
+    return this._price.currency;
   }
 
   get createdAt(): Date {
@@ -100,15 +109,15 @@ export class Product extends AggregateRoot {
     );
   }
 
-  changePrice(priceCents: number): void {
-    if (priceCents === this._priceCents) return;
-    this._priceCents = priceCents;
+  changePrice(price: Money): void {
+    if (price.equals(this._price)) return;
+    this._price = price;
     this._updatedAt = new Date();
     this.validate();
     this.recordEvent(
       new ProductPriceChangedEvent({
         productId: this._id,
-        priceCents,
+        price,
         occurredAt: this._updatedAt,
       }),
     );
@@ -127,13 +136,9 @@ export class Product extends AggregateRoot {
     if (trimmed.length > NAME_MAX_LENGTH) {
       throw new InvariantViolation(`Product name must be at most ${NAME_MAX_LENGTH} characters`);
     }
-    if (!Number.isSafeInteger(this._priceCents)) {
-      throw new InvariantViolation(
-        'Product priceCents must be a safe integer (<= Number.MAX_SAFE_INTEGER)',
-      );
-    }
-    if (this._priceCents <= 0) {
-      throw new InvariantViolation('Product priceCents must be greater than 0');
+    // Money validates itself on construction; only presence needs checking here.
+    if (!(this._price instanceof Money)) {
+      throw new InvariantViolation('Product price must be a Money value object');
     }
   }
 }

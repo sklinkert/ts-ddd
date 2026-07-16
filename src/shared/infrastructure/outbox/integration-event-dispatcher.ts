@@ -22,8 +22,6 @@ export class LoggingIntegrationEventDispatcher extends IntegrationEventDispatche
   private readonly logger = new Logger(LoggingIntegrationEventDispatcher.name);
 
   async dispatch(event: IntegrationEvent): Promise<void> {
-    this.logger.log(
-      `[outbox] ${event.aggregateType}#${event.aggregateId} ${event.eventType}`,
-    );
+    this.logger.log(`[outbox] ${event.aggregateType}#${event.aggregateId} ${event.eventType}`);
   }
 }

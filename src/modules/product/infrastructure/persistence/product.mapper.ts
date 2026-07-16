@@ -1,3 +1,4 @@
+import { Money } from '../../../../shared/domain/money';
 import { Product } from '../../domain/product';
 import { ProductId } from '../../domain/product-id';
 import { SellerId } from '../../../seller/domain/seller-id';
@@ -9,7 +10,7 @@ export class ProductMapper {
       id: ProductId(orm.id),
       sellerId: SellerId(orm.sellerId),
       name: orm.name,
-      priceCents: toSafeNumber(orm.priceCents, 'priceCents'),
+      price: Money.of(toSafeNumber(orm.priceCents, 'priceCents'), orm.currency),
       createdAt: orm.createdAt,
       updatedAt: orm.updatedAt,
     });
@@ -21,6 +22,7 @@ export class ProductMapper {
     orm.sellerId = product.sellerId;
     orm.name = product.name;
     orm.priceCents = product.priceCents;
+    orm.currency = product.currency;
     orm.createdAt = product.createdAt;
     orm.updatedAt = product.updatedAt;
     return orm;

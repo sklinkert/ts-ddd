@@ -1,5 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { EntityManager } from '@mikro-orm/postgresql';
+import { Money } from '../../../../shared/domain/money';
 import { Product } from '../../domain/product';
 import { ProductId } from '../../domain/product-id';
 import { ProductRepository } from '../../domain/product.repository';
@@ -25,7 +26,7 @@ export class CreateProductHandler implements ICommandHandler<CreateProductComman
       const product = Product.create({
         sellerId,
         name: cmd.name,
-        priceCents: cmd.priceCents,
+        price: Money.of(cmd.priceCents, cmd.currency),
       });
       const saved = await this.products.save(product.toValidated());
       return saved.id;

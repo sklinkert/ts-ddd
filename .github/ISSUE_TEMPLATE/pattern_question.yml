@@ -1,0 +1,34 @@
+name: Pattern question
+description: Ask about a DDD/CQRS pattern used in this template
+labels: [question]
+body:
+  - type: dropdown
+    id: pattern
+    attributes:
+      label: Which pattern is the question about?
+      options:
+        - Aggregates & invariants
+        - ValidatedEntity wrapper
+        - Branded IDs
+        - Money value object
+        - CQRS commands/queries
+        - Transactional outbox
+        - Idempotent writes
+        - Layering / module structure
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and what is unclear?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What have you tried or read already?
+      description: Link the file(s) in this repo you looked at, if any.

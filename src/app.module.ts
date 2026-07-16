@@ -7,7 +7,9 @@ import { SellerModule } from './modules/seller/seller.module';
 import { ProductModule } from './modules/product/product.module';
 import { OutboxModule } from './shared/infrastructure/outbox/outbox.module';
 import { IdempotencyModule } from './shared/infrastructure/idempotency/idempotency.module';
+import { HealthModule } from './shared/interface/health/health.module';
 import { IdempotencyMiddleware } from './shared/interface/middleware/idempotency.middleware';
+import { RequestLoggerMiddleware } from './shared/interface/middleware/request-logger.middleware';
 
 @Module({
   imports: [
@@ -16,16 +18,20 @@ import { IdempotencyMiddleware } from './shared/interface/middleware/idempotency
     MikroOrmModule.forRoot(mikroOrmConfig),
     OutboxModule,
     IdempotencyModule,
+    HealthModule,
     SellerModule,
     ProductModule,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(IdempotencyMiddleware).forRoutes(
-      { path: '*', method: RequestMethod.POST },
-      { path: '*', method: RequestMethod.PUT },
-      { path: '*', method: RequestMethod.PATCH },
-    );
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+    consumer
+      .apply(IdempotencyMiddleware)
+      .forRoutes(
+        { path: '*', method: RequestMethod.POST },
+        { path: '*', method: RequestMethod.PUT },
+        { path: '*', method: RequestMethod.PATCH },
+      );
   }
 }

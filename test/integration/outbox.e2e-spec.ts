@@ -1,8 +1,6 @@
 import request from 'supertest';
 import { OutboxPublisher } from '../../src/shared/infrastructure/outbox/outbox.publisher';
-import {
-  IntegrationEventDispatcher,
-} from '../../src/shared/infrastructure/outbox/integration-event-dispatcher';
+import { IntegrationEventDispatcher } from '../../src/shared/infrastructure/outbox/integration-event-dispatcher';
 import { IntegrationEvent } from '../../src/shared/infrastructure/outbox/integration-event';
 import { createTestApp, TestAppContext } from './setup/test-app';
 
@@ -73,9 +71,9 @@ describe('Outbox (integration)', () => {
 
     const remaining = await ctx.orm.em
       .getConnection()
-      .execute<{ count: string }[]>(
-        'SELECT count(*)::text AS count FROM outbox WHERE published_at IS NULL',
-      );
+      .execute<
+        { count: string }[]
+      >('SELECT count(*)::text AS count FROM outbox WHERE published_at IS NULL');
     expect(remaining[0].count).toBe('0');
   });
 
@@ -92,9 +90,9 @@ describe('Outbox (integration)', () => {
 
     const rows = await ctx.orm.em
       .getConnection()
-      .execute<{ published_at: Date | null; attempts: number; claimed_at: Date | null }[]>(
-        'SELECT published_at, attempts, claimed_at FROM outbox',
-      );
+      .execute<
+        { published_at: Date | null; attempts: number; claimed_at: Date | null }[]
+      >('SELECT published_at, attempts, claimed_at FROM outbox');
     expect(rows[0].published_at).toBeNull();
     expect(Number(rows[0].attempts)).toBe(1);
     expect(rows[0].claimed_at).toBeNull();

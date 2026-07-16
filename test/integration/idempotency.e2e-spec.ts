@@ -120,6 +120,28 @@ describe('Idempotency (integration)', () => {
     expect(replay.body.id).toBeDefined();
   });
 
+  it('takes over a stale pending claim left by a crashed process', async () => {
+    const body = { name: 'Acme', email: 'a@b.co' };
+
+    // Simulate a crash: a pending row (response_status = 0) older than the TTL
+    // whose holder never completed or released it.
+    const idempotency = ctx.app.get(IdempotencyService);
+    const hash = idempotency.hashRequest(body);
+    await ctx.orm.em.getConnection().execute(
+      `INSERT INTO idempotency_records (key, method, path, request_hash, response_status, response_body, created_at)
+         VALUES (?, 'POST', '/api/v1/sellers', ?, 0, '{}'::jsonb, now() - interval '10 minutes')`,
+      [KEY, hash],
+    );
+
+    // A crashed holder's stale claim is taken over and the retry succeeds
+    // instead of 409ing forever.
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/sellers')
+      .set('Idempotency-Key', KEY)
+      .send(body)
+      .expect(201);
+  });
+
   it('cleanupOlderThan deletes completed records past the retention window', async () => {
     const idempotency = ctx.app.get(IdempotencyService);
     const body = { name: 'A', email: 'a@b.co' };
